@@ -7,44 +7,42 @@ package hw2;
  * @author YOUR_NAME_HERE
  */
 public class FuzzballGame {
-  /**
-   * Number of strikes causing a player to be out.
-   */
-  public static final int MAX_STRIKES = 2;
 
-  /**
-   * Number of balls causing a player to walk.
-   */
-  public static final int MAX_BALLS = 5;
+   public static final int MAX_STRIKES = 2;
+   public static final int MAX_BALLS = 5;
+   public static final int MAX_OUTS = 3;
 
-  /**
-   * Number of outs before the teams switch.
-   */
-  public static final int MAX_OUTS = 3;
+   public int currentInnings;
+   public boolean isTop;
+   public int ballCount;
+   public int calledStrikes;
+   public int currentOuts;
+   public int team1Score;
+   public int team0Score;
+   public boolean[] bases;
+   public int maxInnings;
 
-  public int currentInnings = 1;
+   public boolean isGameEnded;
 
-  public int topOrBottom = 1;
-
-  public int ballCount = 0;
-
-  public int calledStrikes = 0;
-
-  public int currentOuts = 0;
-
-  public boolean[] bases = new boolean[3];
-
-
-
-
-
-  // TODO: EVERTHING ELSE
-  // Note that this code will not compile until you have put in stubs for all
-  // the required methods.
-  
+   public FuzzballGame(int maxInnings) {
+   this.maxInnings = maxInnings;
+   this.currentInnings = 1;
+   this.isTop = true;
+   this.ballCount = 0;
+   this.calledStrikes = 0;
+   this.currentOuts = 0;
+   this.team1Score = 0;
+   this.team0Score = 0;
+   this.bases = new boolean[3];
+   this.isGameEnded = false;
+   }
 
 
-  
+
+
+
+
+  /*
   // The methods below are provided for you and you should not modify them.
   // The compile errors will go away after you have written stubs for the
   // rest of the API methods.
@@ -63,19 +61,16 @@ public class FuzzballGame {
   }
 
   public void changeInnings(){
-    if(currentInnings == 1){
-      currentInnings = 2;
+    if(currentInnings < maxInnings - 1){
+      currentInnings++;
     } else {
-      currentInnings = 1;
+      isGameEnded = true;
     }
 
   }
 
-  private int newBatter(){
 
-  }
-
-  private boolean runnerOnBase(int i) {
+  public boolean runnerOnBase(int i) {
     return bases[i-1];
   }
 
@@ -101,26 +96,54 @@ public class FuzzballGame {
         getTeam1Score(), getBallCount(), getCalledStrikes(), getCurrentOuts());
   }
 
-  private void strike(boolean strikeValue) {
+  public void strike(boolean strikeValue) {
     if(strikeValue){
       currentOuts++;
+      newBatter();
     } else {
       calledStrikes++;
-      if(calledStrikes%2==0){
+      if(calledStrikes%MAX_STRIKES==0){
         currentOuts++;
+        newBatter();
 
       }
     }
   }
 
-  private void ball(){
+  private void newBatter(){
+    resetBalls();
+    resetStrikes();
+    if(getCurrentOuts() >= MAX_OUTS){
+      changeisTop();
+      currentOuts = 0;
+    }
+  }
+
+  private void changeisTop(){
+    if(isTop){
+      isTop = false;
+    } else {
+      isTop = true;
+      changeInnings();
+    }
+  }
+
+  private void resetBalls() {
+    ballCount = 0;
+  }
+
+  private void resetStrikes() {
+    calledStrikes = 0;
+  }
+
+  public void ball(){
     ballCount++;
     if(ballCount == MAX_BALLS){
       walk();
     }
   }
 
-  private void walk() {
+  public void walk() {
     String bases = getBases();
     if(bases.charAt(2) == 'X'){
           bases = "X" + bases.charAt(0) + bases.charAt(1);
@@ -135,59 +158,84 @@ public class FuzzballGame {
 
   private void caughtFly(){
     currentOuts++;
+    newBatter();
   }
-  private void hit(int dist){
-    if(dist >= 15 && dist < 150) {
-      // Single
-      // An imaginary runner goes to first base
-      if (!runnerOnBase(1)) {
-        moveRunnerToBase(1);
-      } else if (!runnerOnBase(2)) {
-        moveRunnerToBase(2);
-      } else if (!runnerOnBase(3)) {
-        moveRunnerToBase(3);
-      } else {
-        // All bases are occupied, so we score a run
-        earnPoints(1);
-      }
-    } else if(dist >= 150 && dist < 200) {
-      // Double
-      // An imaginary runner goes to second base, leaving first base empty
-      // Any runners already on the bases advance twice
-      moveRunnerToBase(2);
-      if (runnerOnBase(1)) {
-        moveRunnerToBase(1);
-      }
-      if (runnerOnBase(2)) {
-        moveRunnerToBase(3);
-      }
-    } else if(dist >= 200 && dist < 250) {
-      // Triple
-      // An imaginary runner goes to third base, leaving first and second bases empty
-      // Any runners already on the bases advance three times
-      moveRunnerToBase(3);
-      if (runnerOnBase(2)) {
-        moveRunnerToBase(2);
-      }
-      if (runnerOnBase(1)) {
-        moveRunnerToBase(1);
-      }
-    } else if(dist >= 250) {
-      // Home Run
-      // All bases end up empty and the team earns up to four points
-      for(int i = 1; i <= 3; i++) {
-        if (runnerOnBase(i)) {
-          moveRunnerToBase(i);
-        }
-      }
-      // Earn points
-      earnPoints(4);
+
+  public void hit(int dist) {
+    if (dist >= 15 && dist < 150) {
+      handleSingle();
+    } else if (dist >= 150 && dist < 200) {
+      handleDouble();
+    } else if (dist >= 200 && dist < 250) {
+      handleTriple();
+    } else if (dist >= 250) {
+      handleHomeRun();
+    } else {
+      // Handle invalid hit distance
     }
     // Reset counts of balls and strikes for a new batter
     resetCounts();
+  } //TODO add foul() for else
+
+  private void moveRunnerToBase(int base) {
+    bases[base - 1] = true;
   }
 
-  private int getCurrentOuts() {
+  private void handleSingle() {
+    if (!runnerOnBase(1)) {
+      moveRunnerToBase(1);
+    } else if (!runnerOnBase(2)) {
+      moveRunnerToBase(2);
+    } else if (!runnerOnBase(3)) {
+      moveRunnerToBase(3);
+    } else {
+      earnPoints(1);
+    }
+  }
+
+  private void handleDouble() {
+    moveRunnerToBase(2);
+    if (runnerOnBase(1)) {
+      moveRunnerToBase(1);
+    }
+    if (runnerOnBase(2)) {
+      moveRunnerToBase(3);
+    }
+  }
+
+  private void handleTriple() {
+    moveRunnerToBase(3);
+    if (runnerOnBase(2)) {
+      moveRunnerToBase(2);
+    }
+    if (runnerOnBase(1)) {
+      moveRunnerToBase(1);
+    }
+  }
+
+  private void handleHomeRun() {
+    for (int i = 1; i <= 3; i++) {
+      if (runnerOnBase(i)) {
+        moveRunnerToBase(i);
+      }
+    }
+    earnPoints(4);
+  }
+
+  public void earnPoints(int points) {
+    if (isTop) {
+      team0Score += points;
+    } else {
+      team1Score += points;
+    }
+  }
+
+  public void resetCounts() {
+    ballCount = 0;
+    calledStrikes = 0;
+  }
+
+  public int getCurrentOuts() {
     return currentOuts;
   }
 
@@ -200,12 +248,12 @@ public class FuzzballGame {
   }
 
 
-  private int getTeam1Score() {
-    return 0;
+  public int getTeam1Score() {
+    return team1Score;
   }
 
-  private int getTeam0Score() {
-    return 0;
+  public int getTeam0Score() {
+    return team0Score;
   }
 
   private int whichInning() {
@@ -213,8 +261,8 @@ public class FuzzballGame {
   }
 
 
-  private boolean isTopOfInning() {
-      return topOrBottom == 1;
+  public boolean isTopOfInning() {
+      return isTop;
   }
 
   public void setBall(int balls){
@@ -223,6 +271,10 @@ public class FuzzballGame {
 
   public void setStrikes(int strikes){
     calledStrikes = strikes;
+  }
+
+  public boolean gameEnded(){
+    return isGameEnded;
   }
 }
 
